@@ -65,6 +65,8 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.google.common.base.Charsets;
+// for Palladio performance analysis
+import java.lang.management.*;
 
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
@@ -503,7 +505,22 @@ class JobSubmitter {
     
     LOG.info("Palladio debug: Input format class="+job.getInputFormatClass());
 
+    long total = Runtime.getRuntime().totalMemory();
+    LOG.info("Palladio debug: Total memory available before call to split="+total);
+    long cputimebeforesplit=getCpuTime();
     List<InputSplit> splits = input.getSplits(job);
+    long cputimeaftersplit=getCpuTime();
+    long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    LOG.info("Palladio debug: Total memory available after call to split="+used);
+    long cputimeforsplit=cputimeaftersplit-cputimebeforesplit;
+    LOG.info("Palladio debug: CPU time taken for split=="+cputimeforsplit);
+    
+    //part of debug
+    LOG.info("Palladio debug: printing split contents");
+    for(int i=0;i<splits.size();i++) {
+    	LOG.info(splits.get(i));
+    	
+    }
     T[] array = (T[]) splits.toArray(new InputSplit[splits.size()]);
 
     // sort the splits into order based on size, so that the biggest
@@ -668,5 +685,19 @@ class JobSubmitter {
 
       DistributedCache.addCacheArchive(uri, conf);
     }
+  }
+  
+  /** Get CPU time in nanoseconds for Pallladio performance analysis */
+  public long getCpuTime( ) {
+      ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+      return bean.isCurrentThreadCpuTimeSupported( ) ?
+          bean.getCurrentThreadCpuTime( ) : 0L;
+  }
+   
+  /** Get user time in nanoseconds for Pallladio performance analysis */
+  public long getUserTime( ) {
+      ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+      return bean.isCurrentThreadCpuTimeSupported( ) ?
+          bean.getCurrentThreadUserTime( ) : 0L;
   }
 }
