@@ -75,6 +75,11 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
 
+
+
+//for Palladio performance analysis
+import java.lang.management.*;
+
 /** A Map task. */
 @InterfaceAudience.LimitedPrivate({"MapReduce"})
 @InterfaceStability.Unstable
@@ -788,7 +793,11 @@ public class MapTask extends Task {
           new WrappedMapper<INKEY, INVALUE, OUTKEY, OUTVALUE>().getMapContext(
               mapContext);
 
+    long cputimebeforemapper=getCpuTime(); // getting cpu time for palladio debug
+    long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    LOG.info("Palladio debug: Total memory available before call to mapper="+used);
     try {
+      
       input.initialize(split, mapperContext);
       LOG.info("Palladio debug: Starting Mapper");
       mapper.run(mapperContext);
@@ -802,6 +811,12 @@ public class MapTask extends Task {
     } finally {
       closeQuietly(input);
       closeQuietly(output, mapperContext);
+      long cputimeaftermapper=getCpuTime();
+      long used2  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+      LOG.info("Palladio debug: Total memory available after call to mapper="+used2);
+      long cputimeformapper=cputimeaftermapper-cputimebeforemapper;
+      LOG.info("Palladio debug: CPU time taken for mapper=="+cputimeformapper);
+
     }
   }
 
@@ -1464,6 +1479,9 @@ public class MapTask extends Task {
 
     public void flush() throws IOException, ClassNotFoundException,
            InterruptedException {
+      long total = Runtime.getRuntime().totalMemory();
+      LOG.info("Palladio debug: Total memory available before call to flush="+total);
+      long cputimebeforeflush=getCpuTime();
       LOG.info("Starting flush of map output");
       spillLock.lock();
       try {
@@ -1514,6 +1532,12 @@ public class MapTask extends Task {
       mergeParts();
       Path outputPath = mapOutputFile.getOutputFile();
       fileOutputByteCounter.increment(rfs.getFileStatus(outputPath).getLen());
+      long cputimeafterflush=getCpuTime();
+      long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+      LOG.info("Palladio debug: Total memory available after call to flush="+used);
+      long cputimeforsplit=cputimeafterflush-cputimebeforeflush;
+      LOG.info("Palladio debug: CPU time taken for split=="+cputimeforsplit);
+    
     }
 
     public void close() { }
@@ -1586,6 +1610,9 @@ public class MapTask extends Task {
       //approximate the length of the output file to be the length of the
       //buffer + header lengths for the partitions
      LOG.info("Palladio debug: Inside sortAndSpill for spill and sort phase");
+     // Palladio debug: Partitioning & combining happening here
+     long cputimestartofspill=getCpuTime(); // getting cpu time for palladio debug
+     long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
       final long size = (bufend >= bufstart
           ? bufend - bufstart
           : (bufvoid - bufend) + bufstart) +
@@ -1607,6 +1634,9 @@ public class MapTask extends Task {
         int spindex = mstart;
         final IndexRecord rec = new IndexRecord();
         final InMemValBytes value = new InMemValBytes();
+        LOG.info("Palladio debug: Starting partitioner");
+        long cputimestartofpartition=getCpuTime(); // getting cpu time for palladio debug
+        long usedpartition  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         for (int i = 0; i < partitions; ++i) {
           IFile.Writer<K, V> writer = null;
           try {
@@ -1965,6 +1995,21 @@ public class MapTask extends Task {
         throw new IOException("Unable to rename " + src + " to " + dst);
       }
     }
+    
+    /** Get CPU time in nanoseconds for Pallladio performance analysis */
+    public long getCpuTime( ) {
+        ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+        return bean.isCurrentThreadCpuTimeSupported( ) ?
+            bean.getCurrentThreadCpuTime( ) : 0L;
+    }
+     
+    /** Get user time in nanoseconds for Pallladio performance analysis */
+    public long getUserTime( ) {
+        ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+        return bean.isCurrentThreadCpuTimeSupported( ) ?
+            bean.getCurrentThreadUserTime( ) : 0L;
+    }
+    
   } // MapOutputBuffer
   
   /**
@@ -2028,5 +2073,19 @@ public class MapTask extends Task {
         LOG.info("Ignoring exception during close for " + c, ie);
       }
     }
+  }
+  
+  /** Get CPU time in nanoseconds for Pallladio performance analysis */
+  public long getCpuTime( ) {
+      ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+      return bean.isCurrentThreadCpuTimeSupported( ) ?
+          bean.getCurrentThreadCpuTime( ) : 0L;
+  }
+   
+  /** Get user time in nanoseconds for Pallladio performance analysis */
+  public long getUserTime( ) {
+      ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+      return bean.isCurrentThreadCpuTimeSupported( ) ?
+          bean.getCurrentThreadUserTime( ) : 0L;
   }
 }
