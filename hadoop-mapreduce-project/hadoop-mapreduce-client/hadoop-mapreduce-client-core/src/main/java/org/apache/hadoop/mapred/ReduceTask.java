@@ -21,6 +21,8 @@ package org.apache.hadoop.mapred;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -360,6 +362,10 @@ public class ReduceTask extends Task {
 					
     shuffleConsumerPlugin = ReflectionUtils.newInstance(clazz, job);
     LOG.info("Using ShuffleConsumerPlugin: " + shuffleConsumerPlugin);
+    LOG.info("Palladio debug: Starting shuffle");
+    long cputimestartofshuffle=getCpuTime(); // getting cpu time for palladio debug
+    long usedshuffle1  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    LOG.info("Palladio debug: Total memory available before call shuffle="+usedshuffle1);
 
     ShuffleConsumerPlugin.Context shuffleContext = 
       new ShuffleConsumerPlugin.Context(getTaskID(), job, FileSystem.getLocal(job), umbilical, 
@@ -379,6 +385,12 @@ public class ReduceTask extends Task {
     mapOutputFilesOnDisk.clear();
     
     sortPhase.complete();                         // sort is complete
+    long cputimeendofshuffle=getCpuTime(); // getting cpu time for palladio debug
+    long usedshuffle2  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+    LOG.info("Palladio debug: Total memory available after call shuffle="+usedshuffle2);
+    long cputimeforshuffle=cputimeendofshuffle-cputimestartofshuffle;
+    LOG.info("Palladio debug: CPU time taken for shuffle=="+cputimeforshuffle);
+    
     setPhase(TaskStatus.Phase.REDUCE); 
     statusUpdate(umbilical);
     Class keyClass = job.getMapOutputKeyClass();
@@ -639,5 +651,19 @@ public class ReduceTask extends Task {
         LOG.info("Exception in closing " + c, e);
       }
     }
+  }
+  
+  /** Get CPU time in nanoseconds for Palladio performance analysis */
+  public long getCpuTime( ) {
+      ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+      return bean.isCurrentThreadCpuTimeSupported( ) ?
+          bean.getCurrentThreadCpuTime( ) : 0L;
+  }
+   
+  /** Get user time in nanoseconds for Palladio performance analysis */
+  public long getUserTime( ) {
+      ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
+      return bean.isCurrentThreadCpuTimeSupported( ) ?
+          bean.getCurrentThreadUserTime( ) : 0L;
   }
 }

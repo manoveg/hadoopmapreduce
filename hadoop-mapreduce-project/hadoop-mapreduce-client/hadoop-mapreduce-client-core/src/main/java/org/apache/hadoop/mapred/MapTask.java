@@ -1536,7 +1536,7 @@ public class MapTask extends Task {
       long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
       LOG.info("Palladio debug: Total memory available after call to flush="+used);
       long cputimeforsplit=cputimeafterflush-cputimebeforeflush;
-      LOG.info("Palladio debug: CPU time taken for split=="+cputimeforsplit);
+      LOG.info("Palladio debug: CPU time taken for flush=="+cputimeforsplit);
     
     }
 
@@ -1612,7 +1612,8 @@ public class MapTask extends Task {
      LOG.info("Palladio debug: Inside sortAndSpill for spill and sort phase");
      // Palladio debug: Partitioning & combining happening here
      long cputimestartofspill=getCpuTime(); // getting cpu time for palladio debug
-     long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+     long usedsortandspill1  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+     LOG.info("Palladio debug: Total memory available before call to spill="+usedsortandspill1);
       final long size = (bufend >= bufstart
           ? bufend - bufstart
           : (bufvoid - bufend) + bufstart) +
@@ -1636,7 +1637,8 @@ public class MapTask extends Task {
         final InMemValBytes value = new InMemValBytes();
         LOG.info("Palladio debug: Starting partitioner");
         long cputimestartofpartition=getCpuTime(); // getting cpu time for palladio debug
-        long usedpartition  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        long usedpartition1  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        LOG.info("Palladio debug: Total memory available before call partitioing="+usedpartition1);
         for (int i = 0; i < partitions; ++i) {
           IFile.Writer<K, V> writer = null;
           try {
@@ -1688,6 +1690,12 @@ public class MapTask extends Task {
             if (null != writer) writer.close();
           }
         }
+        
+        long cputimeendofpartition=getCpuTime(); // getting cpu time for palladio debug
+        long usedpartition2  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        LOG.info("Palladio debug: Total memory available after  partitioing="+usedpartition2);
+        long cputimeforpartition=cputimeendofpartition-cputimestartofpartition;
+        LOG.info("Palladio debug: CPU time taken for flush=="+cputimeforpartition);
 
         if (totalIndexCacheMemory >= indexCacheMemoryLimit) {
           // create spill index file
@@ -1705,6 +1713,11 @@ public class MapTask extends Task {
       } finally {
         if (out != null) out.close();
       }
+      long cputimeendofspill=getCpuTime(); // getting cpu time for palladio debug
+      long usedsortandspill2  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+      LOG.info("Palladio debug: Total memory available after call to spill="+usedsortandspill2);
+      long cputimeforspilling=cputimeendofspill-cputimestartofspill;
+      LOG.info("Palladio debug: CPU time taken for spilling=="+cputimeforspilling);
     }
 
     /**
