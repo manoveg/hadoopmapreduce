@@ -705,6 +705,7 @@ public class MapTask extends Task {
       if (partitions > 1) {
         partitioner = (org.apache.hadoop.mapreduce.Partitioner<K,V>)
           ReflectionUtils.newInstance(jobContext.getPartitionerClass(), job);
+        LOG.info("Palladio debug: Inside NewOutputCollector contructor, partitioner class="+jobContext.getPartitionerClass());
       } else {
         partitioner = new org.apache.hadoop.mapreduce.Partitioner<K,V>() {
           @Override
@@ -1090,6 +1091,7 @@ public class MapTask extends Task {
     public synchronized void collect(K key, V value, final int partition
                                      ) throws IOException {
       reporter.progress();
+      LOG.info("Palladio debug: Inside collect");
       if (key.getClass() != keyClass) {
         throw new IOException("Type mismatch in key from map: expected "
                               + keyClass.getName() + ", received "
@@ -1206,6 +1208,7 @@ public class MapTask extends Task {
         mapOutputRecordCounter.increment(1);
         return;
       }
+      LOG.info("Palladio debug: Finished collect");
     }
 
     private TaskAttemptID getTaskID() {
@@ -1592,6 +1595,7 @@ public class MapTask extends Task {
 
     private void startSpill() {
       assert !spillInProgress;
+      LOG.info("Palladio debug: Inside startSpill function");
       kvend = (kvindex + NMETA) % kvmeta.capacity();
       bufend = bufmark;
       spillInProgress = true;
