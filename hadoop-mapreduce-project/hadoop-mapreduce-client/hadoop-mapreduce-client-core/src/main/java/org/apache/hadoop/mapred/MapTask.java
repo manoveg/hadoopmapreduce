@@ -29,6 +29,7 @@ import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -75,6 +76,11 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringInterner;
 import org.apache.hadoop.util.StringUtils;
 
+
+
+
+
+import com.google.common.base.Stopwatch;
 
 
 //for Palladio performance analysis
@@ -742,8 +748,8 @@ public class MapTask extends Task {
                     TaskReporter reporter
                     ) throws IOException, ClassNotFoundException,
                              InterruptedException {
-	  
-	 LOG.info("Palladio debug: Inside runNewMapper");
+	
+	  LOG.info("Palladio debug: Inside runNewMapper");
     // make a task context so we can get the classes
     org.apache.hadoop.mapreduce.TaskAttemptContext taskContext =
       new org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl(job, 
@@ -797,10 +803,11 @@ public class MapTask extends Task {
     long cputimebeforemapper=getCpuTime(); // getting cpu time for palladio debug
     long used  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
     LOG.info("Palladio debug: Total memory available before call to mapper="+used);
+    Stopwatch sw4 = new Stopwatch().start();
     try {
       
       input.initialize(split, mapperContext);
-      LOG.info("Palladio debug: Starting Mapper");
+      //LOG.info("Palladio debug: Starting Mapper");
       mapper.run(mapperContext);
       mapPhase.complete();
       setPhase(TaskStatus.Phase.SORT);
@@ -817,6 +824,9 @@ public class MapTask extends Task {
       LOG.info("Palladio debug: Total memory available after call to mapper="+used2);
       long cputimeformapper=cputimeaftermapper-cputimebeforemapper;
       LOG.info("Palladio debug: CPU time taken for mapper=="+cputimeformapper);
+      sw4.stop();
+      LOG.info("Palladio debug: Elapsed time for mapper=="+sw4.elapsedMillis());
+      
 
     }
   }
@@ -1091,7 +1101,7 @@ public class MapTask extends Task {
     public synchronized void collect(K key, V value, final int partition
                                      ) throws IOException {
       reporter.progress();
-      LOG.info("Palladio debug: Inside collect");
+      //LOG.info("Palladio debug: Inside collect");
       if (key.getClass() != keyClass) {
         throw new IOException("Type mismatch in key from map: expected "
                               + keyClass.getName() + ", received "
@@ -1208,7 +1218,7 @@ public class MapTask extends Task {
         mapOutputRecordCounter.increment(1);
         return;
       }
-      LOG.info("Palladio debug: Finished collect");
+      //LOG.info("Palladio debug: Finished collect");
     }
 
     private TaskAttemptID getTaskID() {
@@ -1611,6 +1621,8 @@ public class MapTask extends Task {
 
     private void sortAndSpill() throws IOException, ClassNotFoundException,
                                        InterruptedException {
+    
+    Stopwatch sw = new Stopwatch().start(); // for palladio response time measurement
       //approximate the length of the output file to be the length of the
       //buffer + header lengths for the partitions
      LOG.info("Palladio debug: Inside sortAndSpill for spill and sort phase");
@@ -1640,6 +1652,7 @@ public class MapTask extends Task {
         final IndexRecord rec = new IndexRecord();
         final InMemValBytes value = new InMemValBytes();
         LOG.info("Palladio debug: Starting partitioner");
+        Stopwatch sw2 = new Stopwatch().start(); // for palladio response time measurement for partitioner
         long cputimestartofpartition=getCpuTime(); // getting cpu time for palladio debug
         long usedpartition1  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         LOG.info("Palladio debug: Total memory available before call partitioing="+usedpartition1);
@@ -1695,6 +1708,9 @@ public class MapTask extends Task {
           }
         }
         
+        sw2.stop();
+        LOG.info("Palladio debug: Elapsed time for partitioner"+sw2.elapsedMillis());
+        
         long cputimeendofpartition=getCpuTime(); // getting cpu time for palladio debug
         long usedpartition2  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         LOG.info("Palladio debug: Total memory available after  partitioing="+usedpartition2);
@@ -1713,6 +1729,8 @@ public class MapTask extends Task {
             spillRec.size() * MAP_OUTPUT_INDEX_RECORD_LENGTH;
         }
         LOG.info("Finished spill " + numSpills);
+        sw.stop();
+        LOG.info("Palladio debug: Elapsed time for spill number"+numSpills+"=="+sw.elapsedMillis());
         ++numSpills;
       } finally {
         if (out != null) out.close();
@@ -1722,6 +1740,8 @@ public class MapTask extends Task {
       LOG.info("Palladio debug: Total memory available after call to spill="+usedsortandspill2);
       long cputimeforspilling=cputimeendofspill-cputimestartofspill;
       LOG.info("Palladio debug: CPU time taken for spilling=="+cputimeforspilling);
+      
+      
     }
 
     /**
@@ -2092,14 +2112,14 @@ public class MapTask extends Task {
     }
   }
   
-  /** Get CPU time in nanoseconds for Pallladio performance analysis */
+  /** Get CPU time in nanoseconds for Palladio performance analysis */
   public long getCpuTime( ) {
       ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
       return bean.isCurrentThreadCpuTimeSupported( ) ?
           bean.getCurrentThreadCpuTime( ) : 0L;
   }
    
-  /** Get user time in nanoseconds for Pallladio performance analysis */
+  /** Get user time in nanoseconds for Palladio performance analysis */
   public long getUserTime( ) {
       ThreadMXBean bean = ManagementFactory.getThreadMXBean( );
       return bean.isCurrentThreadCpuTimeSupported( ) ?

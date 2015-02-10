@@ -59,6 +59,8 @@ import org.apache.hadoop.util.Progress;
 import org.apache.hadoop.util.Progressable;
 import org.apache.hadoop.util.ReflectionUtils;
 
+import com.google.common.base.Stopwatch;
+
 /** A Reduce task. */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
@@ -367,6 +369,7 @@ public class ReduceTask extends Task {
     long usedshuffle1  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
     LOG.info("Palladio debug: Total memory available before call shuffle="+usedshuffle1);
 
+    Stopwatch sw2 = new Stopwatch().start(); // for Palladio debug shuffle
     ShuffleConsumerPlugin.Context shuffleContext = 
       new ShuffleConsumerPlugin.Context(getTaskID(), job, FileSystem.getLocal(job), umbilical, 
                   super.lDirAlloc, reporter, codec, 
@@ -385,6 +388,8 @@ public class ReduceTask extends Task {
     mapOutputFilesOnDisk.clear();
     
     sortPhase.complete();                         // sort is complete
+    sw2.stop();
+    LOG.info("Palladio debug: Elapsed time for shuffle=="+sw2.elapsedMillis());
     long cputimeendofshuffle=getCpuTime(); // getting cpu time for palladio debug
     long usedshuffle2  = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
     LOG.info("Palladio debug: Total memory available after call shuffle="+usedshuffle2);
@@ -398,8 +403,12 @@ public class ReduceTask extends Task {
     RawComparator comparator = job.getOutputValueGroupingComparator();
 
     if (useNewApi) {
+      
+      Stopwatch sw1 = new Stopwatch().start(); // for Palladio debug
       runNewReducer(job, umbilical, reporter, rIter, comparator, 
                     keyClass, valueClass);
+      sw1.stop();
+      LOG.info("Palladio debug: Elapsed time for reducer="+sw1.elapsedMillis());
     } else {
       runOldReducer(job, umbilical, reporter, rIter, comparator, 
                     keyClass, valueClass);

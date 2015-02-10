@@ -275,6 +275,7 @@ public class MRAppMaster extends CompositeService {
            conf.getBoolean("mapred.mapper.new-api", false)))  {
       newApiCommitter = true;
       LOG.info("Using mapred newApiCommitter.");
+      LOG.info("Palladio testing change effect.");
     }
     
     boolean copyHistory = false;
