@@ -83,6 +83,8 @@ import org.apache.hadoop.util.StringUtils;
 import com.google.common.base.Stopwatch;
 
 
+
+
 //for Palladio performance analysis
 import java.lang.management.*;
 
@@ -99,6 +101,9 @@ public class MapTask extends Task {
   private final static int APPROX_HEADER_LENGTH = 150;
 
   private static final Log LOG = LogFactory.getLog(MapTask.class.getName());
+  
+  public static float partitiontimetotal=0;
+  public static float spilltimetotal=0;
 
   private Progress mapPhase;
   private Progress sortPhase;
@@ -825,6 +830,8 @@ public class MapTask extends Task {
       long cputimeformapper=cputimeaftermapper-cputimebeforemapper;
       LOG.info("Palladio debug: CPU time taken for mapper=="+cputimeformapper);
       sw4.stop();
+      LOG.info("Palladio debug: Total Elapsed time for partition=="+partitiontimetotal);
+      LOG.info("Palladio debug: Total Elapsed time for spill=="+spilltimetotal);
       LOG.info("Palladio debug: Elapsed time for mapper=="+sw4.elapsedMillis());
       
 
@@ -1709,6 +1716,7 @@ public class MapTask extends Task {
         }
         
         sw2.stop();
+        partitiontimetotal = partitiontimetotal + sw2.elapsedMillis();
         LOG.info("Palladio debug: Elapsed time for partitioner"+sw2.elapsedMillis());
         
         long cputimeendofpartition=getCpuTime(); // getting cpu time for palladio debug
@@ -1730,6 +1738,7 @@ public class MapTask extends Task {
         }
         LOG.info("Finished spill " + numSpills);
         sw.stop();
+        spilltimetotal = spilltimetotal + sw.elapsedMillis();
         LOG.info("Palladio debug: Elapsed time for spill number"+numSpills+"=="+sw.elapsedMillis());
         ++numSpills;
       } finally {

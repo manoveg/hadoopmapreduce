@@ -1293,11 +1293,13 @@ public abstract class TaskAttemptImpl implements
       jce.addCounterUpdate(JobCounter.SLOTS_MILLIS_MAPS, simSlotsRequired * duration);
       jce.addCounterUpdate(JobCounter.MB_MILLIS_MAPS, duration * mbRequired);
       jce.addCounterUpdate(JobCounter.VCORES_MILLIS_MAPS, duration * vcoresRequired);
+      LOG.info("Palladio debug: time taken for task attempt MAP : "+taskAttempt.attemptId+"="+duration);
       jce.addCounterUpdate(JobCounter.MILLIS_MAPS, duration);
     } else {
       jce.addCounterUpdate(JobCounter.SLOTS_MILLIS_REDUCES, simSlotsRequired * duration);
       jce.addCounterUpdate(JobCounter.MB_MILLIS_REDUCES, duration * mbRequired);
       jce.addCounterUpdate(JobCounter.VCORES_MILLIS_REDUCES, duration * vcoresRequired);
+      LOG.info("Palladio debug: time taken for task attempt REDUCE : "+taskAttempt.attemptId+"="+duration);
       jce.addCounterUpdate(JobCounter.MILLIS_REDUCES, duration);
     }
   }
